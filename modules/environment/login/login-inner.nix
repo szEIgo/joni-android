@@ -91,15 +91,28 @@ writeText "login-inner" ''
 
         ${lib.optionalString config.build.flake.inputOverrides ''
           echo "Overriding input urls in the flake..."
-          ${sed} -i \
-            -e 's|github:NixOS/nixpkgs[^"]*|${config.build.flake.nixpkgs}|g' \
-            -e 's|github:nix-community/nix-on-droid[^"]*|${config.build.flake.nix-on-droid}|g' \
-            "${config.user.home}/.config/nix-on-droid/flake.nix"
+          _nod_replace_in_file() {
+            _old="$1"; _new="$2"; _file="$3"; _tmp="$_file.tmp"
+            while IFS= read -r _line; do
+              case "$_line" in *"$_old"*) _line="''${_line%%"$_old"*}$_new''${_line#*"$_old"}" ;; esac
+              printf '%s\n' "$_line"
+            done < "$_file" > "$_tmp"
+            mv "$_tmp" "$_file"
+          }
+          _nod_replace_in_file "github:NixOS/nixpkgs/nixpkgs-unstable" "${config.build.flake.nixpkgs}" "${config.user.home}/.config/nix-on-droid/flake.nix"
+          _nod_replace_in_file "github:nix-community/nix-on-droid" "${config.build.flake.nix-on-droid}" "${config.user.home}/.config/nix-on-droid/flake.nix"
         ''}
 
         echo "Overriding system value in the flake..."
-        ${sed} -i 's|"aarch64-linux"|"${targetSystem}"|g' \
-          "${config.user.home}/.config/nix-on-droid/flake.nix"
+        _nod_replace_in_file() {
+          _old="$1"; _new="$2"; _file="$3"; _tmp="$_file.tmp"
+          while IFS= read -r _line; do
+            case "$_line" in *"$_old"*) _line="''${_line%%"$_old"*}$_new''${_line#*"$_old"}" ;; esac
+            printf '%s\n' "$_line"
+          done < "$_file" > "$_tmp"
+          mv "$_tmp" "$_file"
+        }
+        _nod_replace_in_file '"aarch64-linux"' '"${targetSystem}"' "${config.user.home}/.config/nix-on-droid/flake.nix"
 
         echo "Installing first Nix-on-Droid generation..."
         ${nixCmd} run ${config.build.flake.nix-on-droid} -- switch --flake ${config.user.home}/.config/nix-on-droid
