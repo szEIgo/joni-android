@@ -3,7 +3,11 @@
 { config, lib, initialPackageInfo, writeText, targetSystem }:
 
 let
-  inherit (initialPackageInfo) cacert nix;
+  inherit (initialPackageInfo) cacert nix sh;
+
+  # Derive busybox path from sh path (sh is a symlink to busybox)
+  busyboxBin = builtins.dirOf sh;
+  sed = "${busyboxBin}/busybox sed";
 
   nixCmd = "${nix}/bin/nix --extra-experimental-features 'flakes nix-command'";
   userShell =
@@ -87,14 +91,14 @@ writeText "login-inner" ''
 
         ${lib.optionalString config.build.flake.inputOverrides ''
           echo "Overriding input urls in the flake..."
-          sed -i \
+          ${sed} -i \
             -e 's|github:NixOS/nixpkgs[^"]*|${config.build.flake.nixpkgs}|g' \
             -e 's|github:nix-community/nix-on-droid[^"]*|${config.build.flake.nix-on-droid}|g' \
             "${config.user.home}/.config/nix-on-droid/flake.nix"
         ''}
 
         echo "Overriding system value in the flake..."
-        sed -i 's|"aarch64-linux"|"${targetSystem}"|g' \
+        ${sed} -i 's|"aarch64-linux"|"${targetSystem}"|g' \
           "${config.user.home}/.config/nix-on-droid/flake.nix"
 
         echo "Installing first Nix-on-Droid generation..."
