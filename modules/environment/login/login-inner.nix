@@ -43,19 +43,19 @@ writeText "login-inner" ''
 
       echo
       echo "Nix-on-Droid can be set up with channels or with flakes (still experimental)."
-      while [[ -z $USE_FLAKE ]]; do
-        read -r -p "Do you want to set it up with flakes? (y/N) " flakes
+      USE_FLAKE=""
+      while [ -z "$USE_FLAKE" ]; do
+        printf "Do you want to set it up with flakes? (y/N) "
+        read -r flakes
 
-        if [[ "$flakes" =~ ^[Yy]$ ]]; then
-          USE_FLAKE=1
-        elif [[ "$flakes" =~ ^[Nn]$ || -z "$flakes" ]]; then
-          USE_FLAKE=0
-        else
-          echo "Received invalid input '$flakes', please try again."
-        fi
+        case "$flakes" in
+          [Yy]) USE_FLAKE=1 ;;
+          [Nn]|"") USE_FLAKE=0 ;;
+          *) echo "Received invalid input '$flakes', please try again." ;;
+        esac
       done
 
-      if [[ "$USE_FLAKE" == 0 ]]; then
+      if [ "$USE_FLAKE" = "0" ]; then
 
         echo "Setting up Nix-on-Droid with channels..."
 
@@ -87,29 +87,15 @@ writeText "login-inner" ''
 
         ${lib.optionalString config.build.flake.inputOverrides ''
           echo "Overriding input urls in the flake..."
-          while IFS="" read -r p || [[ -n "$p" ]]
-          do
-              if [[ $p =~ (.*)github:NixOS/nixpkgs.*\"\; ]]; then
-                  printf "''${BASH_REMATCH[1]}${config.build.flake.nixpkgs}\";\n" "$p"
-              elif [[ $p =~ (.*)github:nix-community/nix-on-droid.*\"\; ]]; then
-                  printf "''${BASH_REMATCH[1]}${config.build.flake.nix-on-droid}\";\n" "$p"
-              else
-                  printf '%s\n' "$p"
-              fi
-          done <<<$(< "${config.user.home}/.config/nix-on-droid/flake.nix") \
-                    > "${config.user.home}/.config/nix-on-droid/flake.nix"
+          sed -i \
+            -e 's|github:NixOS/nixpkgs[^"]*|${config.build.flake.nixpkgs}|g' \
+            -e 's|github:nix-community/nix-on-droid[^"]*|${config.build.flake.nix-on-droid}|g' \
+            "${config.user.home}/.config/nix-on-droid/flake.nix"
         ''}
 
         echo "Overriding system value in the flake..."
-        while IFS="" read -r p || [[ -n "$p" ]]
-        do
-          if [[ $p =~ (.*)\"aarch64-linux\"(.*) ]]; then
-              printf "''${BASH_REMATCH[1]}\"${targetSystem}\"''${BASH_REMATCH[2]}\n" "$p"
-          else
-              printf '%s\n' "$p"
-          fi
-        done <<<$(< "${config.user.home}/.config/nix-on-droid/flake.nix") \
-                  > "${config.user.home}/.config/nix-on-droid/flake.nix"
+        sed -i 's|"aarch64-linux"|"${targetSystem}"|g' \
+          "${config.user.home}/.config/nix-on-droid/flake.nix"
 
         echo "Installing first Nix-on-Droid generation..."
         ${nixCmd} run ${config.build.flake.nix-on-droid} -- switch --flake ${config.user.home}/.config/nix-on-droid
@@ -123,7 +109,7 @@ writeText "login-inner" ''
     coreutils, cacert and, most importantly, Nix-on-Droid itself to manage local configuration, see"
       echo "  nix-on-droid help"
 
-      if [[ "$USE_FLAKE" == 0 ]]; then
+      if [ "$USE_FLAKE" = "0" ]; then
         echo "or the config file"
         echo "  ~/.config/nixpkgs/nix-on-droid.nix"
         echo

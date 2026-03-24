@@ -10,7 +10,7 @@ runCommand "bootstrap" { } ''
   cp --recursive ${nixDirectory}/var $out/nix/var
   chmod --recursive u+w $out/nix
 
-  ln --symbolic ${initialPackageInfo.bash}/bin/sh $out/bin/sh
+  ln --symbolic ${initialPackageInfo.sh} $out/bin/sh
 
   install -D -m 0755 ${prootTermux}/bin/proot-static $out/bin/proot-static
 
